@@ -6195,6 +6195,41 @@ try { if (navigator && navigator.storage && typeof navigator.storage.persist ===
   vertical-align: super;
   margin-right: 1px;
 }
+/* 红包详情里的表情包大图 */
+.rp-detail-sticker-img {
+  max-width: 62%;
+  max-height: 190px;
+  border-radius: 12px;
+  object-fit: contain;
+  display: inline-block;
+}
+/* 阅读页左右翻页按钮（电脑端鼠标也能翻） */
+.read-flip-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 34px;
+  height: 56px;
+  border: none;
+  border-radius: 8px;
+  background: rgba(0,0,0,0.10);
+  color: #6b7280;
+  font-size: 22px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 20;
+  padding: 0;
+  opacity: 0.5;
+  transition: opacity .15s ease, background .15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.read-flip-btn:hover { opacity: 1; background: rgba(0,0,0,0.18); }
+.read-flip-btn.left { left: 4px; }
+.read-flip-btn.right { right: 4px; }
+
 .redpacket-card-bless {
   font-size: 12px;
   color: rgba(255,255,255,0.8);
@@ -20966,6 +21001,20 @@ body.dark-mode #tts-player-bar .tts-bar-stop {
       </div>
 
       <div class="settings-card" style="margin-top:10px;">
+        <div class="settings-item" style="flex-direction:column;align-items:stretch;">
+          <div style="display:flex;align-items:center;width:100%;">
+            <div class="settings-icon">🧧</div>
+            <div class="settings-text"><h4>红包塞表情</h4><p>角色发红包时有几率顺手贴一张表情包，你发红包也可以自己挑</p></div>
+          </div>
+          <div class="freq-row" style="margin-top:10px;">
+            <label>出现概率</label>
+            <input type="number" id="rp-sticker-chance" min="0" max="100" onchange="dnRpStickerChanceChange(this)">
+            <span>%</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-card" style="margin-top:10px;">
         <div class="settings-item">
           <div class="settings-icon">🏗️</div>
           <div class="settings-text"><h4>角色自建群聊</h4><p>让角色们自己概率拉群、当群主</p></div>
@@ -23735,9 +23784,27 @@ body.dark-mode #tts-player-bar .tts-bar-stop {
         <label class="form-label">红包备注（可选）</label>
         <input type="text" class="form-input" id="rp-bless" placeholder="留空则随机选一句~" value="">
       </div>
+      <!-- 红包塞表情（可选） -->
+      <div class="form-group">
+        <label class="form-label">塞个表情（可选）</label>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <div id="rp-sticker-preview" onclick="openRpStickerPicker()" style="width:52px;height:52px;border-radius:10px;border:1.5px dashed #e5e7eb;display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:pointer;flex-shrink:0;"></div>
+          <div id="rp-sticker-tip" style="flex:1;font-size:11.5px;color:#999;line-height:1.5;">点方框，从 TA 的表情库里挑一个塞进红包</div>
+        </div>
+      </div>
       <button class="btn btn-primary" onclick="sendRedPacket()" style="background:linear-gradient(135deg,#e84843,#d4372e);">🧧 发送红包</button>
     </div>
   </div>
+  <!-- ========== 红包塞表情：选择器 ========== -->
+  <div class="modal-overlay" id="rp-sticker-picker-modal">
+    <div class="modal">
+      <div class="modal-close" onclick="closeModal('rp-sticker-picker-modal')">✕</div>
+      <div class="modal-title">挑一个表情</div>
+      <div id="rp-sticker-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;max-height:50vh;overflow-y:auto;"></div>
+      <button class="btn" onclick="clearRpSticker()" style="margin-top:12px;width:100%;">不塞了</button>
+    </div>
+  </div>
+
   <!-- ========== 转账详情弹窗 ========== -->
   <div class="modal-overlay transfer-detail-modal" id="transfer-detail-modal">
     <div class="modal">
@@ -23788,6 +23855,7 @@ body.dark-mode #tts-player-bar .tts-bar-stop {
         <button class="btn" onclick="acceptRedPacket()" id="rp-btn-accept" style="flex:1;background:linear-gradient(135deg,#e84843,#d4372e);color:white;font-size:15px;padding:12px;border-radius:10px;border:none;cursor:pointer;">领取红包</button>
         <button class="btn" onclick="returnRedPacket()" id="rp-btn-return" style="flex:1;background:rgba(0,0,0,0.06);color:#666;font-size:15px;padding:12px;border-radius:10px;border:none;cursor:pointer;">退还</button>
       </div>
+      <div id="rp-detail-sticker" style="display:none;padding:2px 16px 16px;text-align:center;"></div>
       <!-- 领取记录 -->
       <div class="rp-claim-records" id="rp-claim-records">
         <div class="rp-claim-title" id="rp-claim-title">领取记录</div>
@@ -26118,6 +26186,8 @@ body.dark-mode #tts-player-bar .tts-bar-stop {
         <p style="color:var(--text-tertiary);font-size:12px;text-align:center;margin-top:20px;">— 本章完 —</p>
       </div>
         </div>
+        <button class="read-flip-btn left" onclick="doReadFlip(-1)" aria-label="上一页">‹</button>
+        <button class="read-flip-btn right" onclick="doReadFlip(1)" aria-label="下一页">›</button>
         <div class="read-page-indicator" id="read-page-indicator"></div>
       </div>
       
@@ -62698,6 +62768,8 @@ function openRedPacketModal() {
   document.getElementById('rp-amount').value = '5.20';
   document.getElementById('rp-bless').value = '';
   document.getElementById('rp-count').value = '5';
+  _rpStickerPick = '';
+  updateRpStickerPreview();
 
   if (isGroup) {
     typeGroup.style.display = '';
@@ -62752,6 +62824,109 @@ function _distributeLuckyAmount(totalAmount, count) {
   return amounts;
 }
 
+// ================= 红包塞表情包 =================
+var _rpStickerPick = '';
+function _rpStickerChancePct() {
+  var v = state._rpStickerChance;
+  if (typeof v !== 'number' || isNaN(v)) v = 35;
+  if (v < 0) v = 0;
+  if (v > 100) v = 100;
+  return v;
+}
+// 我发红包时可挑的表情池：当前聊天各角色的可用表情（私库 + 允许时含公用库）+ 公用库
+function _rpStickerPoolForChat() {
+  var pool = [], seen = {};
+  try {
+    var chat = state.chats[state.currentChatId];
+    var rids = [];
+    if (chat) {
+      if (chat.type === 'group' && chat.memberIds) rids = chat.memberIds.slice();
+      else if (chat.roleId) rids = [chat.roleId];
+    }
+    rids.forEach(function (rid) {
+      var list = (typeof getRoleAvailableEmojis === 'function') ? (getRoleAvailableEmojis(rid) || []) : [];
+      list.forEach(function (e) { if (e && !seen[e]) { seen[e] = 1; pool.push(e); } });
+    });
+  } catch (e) {}
+  try {
+    var shared = (typeof getAllCustomEmojis === 'function') ? (getAllCustomEmojis() || []) : [];
+    shared.forEach(function (e) { if (e && !seen[e]) { seen[e] = 1; pool.push(e); } });
+  } catch (e) {}
+  return pool.filter(function (e) { return (typeof isValidEmojiContent === 'function') ? isValidEmojiContent(e) : !!e; });
+}
+// 角色发红包时按概率顺手贴一张（角色私库优先）
+function _rpRolePickSticker(roleId) {
+  try {
+    if (Math.random() * 100 >= _rpStickerChancePct()) return null;
+    var pool = (typeof getRoleAvailableEmojis === 'function') ? (getRoleAvailableEmojis(roleId) || []) : [];
+    pool = pool.filter(function (e) { return e && ((typeof isValidEmojiContent === 'function') ? isValidEmojiContent(e) : true); });
+    if (!pool.length) return null;
+    return pool[Math.floor(Math.random() * pool.length)];
+  } catch (e) { return null; }
+}
+function _rpStickerPreviewHtml(e) {
+  if (!e) return '';
+  var isText = (typeof _isTextEmoji === 'function') ? _isTextEmoji(e) : (String(e).indexOf('data:') !== 0 && String(e).indexOf('http') !== 0);
+  if (isText) return '<span style="font-size:26px;line-height:1;">' + escapeHtml(e) + '</span>';
+  return '<img src="' + e + '" style="width:100%;height:100%;object-fit:cover;" alt="表情">';
+}
+function updateRpStickerPreview() {
+  var box = document.getElementById('rp-sticker-preview');
+  var tip = document.getElementById('rp-sticker-tip');
+  if (!box) return;
+  if (_rpStickerPick) {
+    box.style.border = '1.5px solid #e5e7eb';
+    box.style.background = '#fff';
+    box.innerHTML = _rpStickerPreviewHtml(_rpStickerPick);
+    if (tip) tip.textContent = '已经挑好了，会贴在红包右上角～';
+  } else {
+    box.style.border = '1.5px dashed #e5e7eb';
+    box.style.background = 'transparent';
+    box.innerHTML = '<span style="font-size:20px;color:#bbb;">+</span>';
+    if (tip) tip.textContent = '点方框，从 TA 的表情库里挑一个塞进红包';
+  }
+}
+function openRpStickerPicker() {
+  renderRpStickerGrid();
+  openModal('rp-sticker-picker-modal');
+}
+function renderRpStickerGrid() {
+  var grid = document.getElementById('rp-sticker-grid');
+  if (!grid) return;
+  var pool = _rpStickerPoolForChat();
+  grid.innerHTML = '';
+  if (!pool.length) {
+    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--text-tertiary);font-size:12px;padding:24px 0;">还没有可用的表情包，先去表情库里加几张吧</div>';
+    return;
+  }
+  pool.forEach(function (e) {
+    var box = document.createElement('div');
+    box.style.cssText = 'height:60px;border-radius:10px;background:rgba(0,0,0,0.03);display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:pointer;';
+    box.innerHTML = _rpStickerPreviewHtml(e);
+    box.onclick = function () { pickRpSticker(e); };
+    grid.appendChild(box);
+  });
+}
+function pickRpSticker(e) {
+  _rpStickerPick = e || '';
+  updateRpStickerPreview();
+  closeModal('rp-sticker-picker-modal');
+}
+function clearRpSticker() {
+  _rpStickerPick = '';
+  updateRpStickerPreview();
+  closeModal('rp-sticker-picker-modal');
+}
+function dnRpStickerChanceChange(inp) {
+  var v = parseInt(inp.value, 10);
+  if (isNaN(v)) v = 35;
+  if (v < 0) v = 0;
+  if (v > 100) v = 100;
+  state._rpStickerChance = v;
+  inp.value = v;
+  try { saveData(); } catch (e) {}
+}
+
 function sendRedPacket() {
   const amount = parseFloat(document.getElementById('rp-amount').value);
   const remark = document.getElementById('rp-bless').value.trim() || RP_BLESS_LIST[randomInt(0, RP_BLESS_LIST.length - 1)];
@@ -62779,6 +62954,7 @@ function sendRedPacket() {
     claimTime: null,
     claims: [] // 领取记录数组 [{roleId, amount, time}]
   };
+  if (_rpStickerPick) rpMsg.sticker = _rpStickerPick;
   
   if (chat.type === 'group') {
     var rpType = document.querySelector('input[name="rp-type"]:checked').value;
@@ -62818,6 +62994,7 @@ function sendRedPacket() {
   saveData();
   renderChatMessages();
   closeModal('redpacket-modal');
+  _rpStickerPick = '';
   showToast('红包已发送');
   
   // 设置24小时自动退回定时器
@@ -62999,6 +63176,28 @@ function openRedPacketDetail(msg, msgIndex) {
   document.getElementById('rp-detail-amount-text').textContent = rpFmt.text;
   document.getElementById('rp-detail-bless').textContent = msg.bless;
   document.getElementById('rp-detail-time-text').textContent = formatTimeShort(msg.time);
+
+  // 红包里塞的表情包，只在点开红包详情时显示
+  try {
+    var _dsEl = document.getElementById('rp-detail-sticker');
+    if (_dsEl) {
+      var _ds = msg.sticker;
+      if (_ds && typeof _ds === 'string') {
+        var _dsIsText = (typeof _isTextEmoji === 'function') ? _isTextEmoji(_ds) : (_ds.indexOf('data:') !== 0 && _ds.indexOf('http') !== 0);
+        if (_dsIsText) {
+          _dsEl.innerHTML = '<div style="font-size:46px;line-height:1.25;">' + escapeHtml(_ds) + '</div>';
+        } else {
+          _dsEl.innerHTML = '<img class="rp-detail-sticker-img" src="' + _ds + '" alt="表情" onerror="this.parentElement.style.display=\'none\'">';
+        }
+        _dsEl.style.display = 'block';
+      } else {
+        _dsEl.innerHTML = '';
+        _dsEl.style.display = 'none';
+      }
+    }
+  } catch (e) {
+    try { var _dsEl2 = document.getElementById('rp-detail-sticker'); if (_dsEl2) { _dsEl2.innerHTML = ''; _dsEl2.style.display = 'none'; } } catch (e2) {}
+  }
   
   // 标题：显示类型标签和个数
   var titleEl = document.getElementById('rp-detail-title');
@@ -63551,6 +63750,7 @@ function groupRoleSendRedPacket(chatId, roleId) {
     type: 'redpacket',
     amount: amount,
     bless: rpType === 'directed' ? '专属红包' : bless,
+    sticker: _rpRolePickSticker(roleId),
     rpType: rpType,
     totalCount: totalCount,
     claims: [],
@@ -63953,6 +64153,11 @@ function loadGroupPushSettingsUI() {
   var _qSw=document.getElementById('rolegroup-quote-enabled');
   if(_atSw) _atSw.checked=state.roleGroupAtEnabled===true;
   if(_qSw) _qSw.checked=state.roleGroupQuoteEnabled===true;
+  // 红包塞表情：回填概率
+  try {
+    var _rscEl = document.getElementById('rp-sticker-chance');
+    if (_rscEl) _rscEl.value = _rpStickerChancePct();
+  } catch (e) {}
 }
 
 // v13.2.9: 角色自建群「主动@ / 引用回复」开关（默认关，全局）
@@ -73726,34 +73931,24 @@ function handleReadTouchEnd(e) {
     // 有选中文本时不触发
     const selection = window.getSelection();
     if (selection && selection.toString().trim().length > 0) return;
-    
-    if (readState.totalPages > 1) {
-      // 多页模式：先翻页
-      if (deltaX < 0) {
-        // 向左滑 = 下一页
-        if (readState.currentPage < readState.totalPages - 1) {
-          flipToPage(readState.currentPage + 1, 'left');
-        } else {
-          // 已是最后一页，翻下一章
-          nextChapter();
-        }
-      } else {
-        // 向右滑 = 上一页
-        if (readState.currentPage > 0) {
-          flipToPage(readState.currentPage - 1, 'right');
-        } else {
-          // 已是第一页，翻上一章
-          prevChapter();
-        }
-      }
+    doReadFlip(deltaX < 0 ? 1 : -1);
+  }
+}
+
+// 统一的翻页入口：dir=1 下一页/下一章，dir=-1 上一页/上一章
+function doReadFlip(dir) {
+  if (!readState || readState.isFlipping) return;
+  if (readState.totalPages > 1) {
+    if (dir > 0) {
+      if (readState.currentPage < readState.totalPages - 1) flipToPage(readState.currentPage + 1, 'left');
+      else nextChapter();
     } else {
-      // 单页模式：直接切换章节
-      if (deltaX > 0) {
-        prevChapter();
-      } else {
-        nextChapter();
-      }
+      if (readState.currentPage > 0) flipToPage(readState.currentPage - 1, 'right');
+      else prevChapter();
     }
+  } else {
+    if (dir > 0) nextChapter();
+    else prevChapter();
   }
 }
 
@@ -74085,9 +74280,27 @@ function initReadPageEvents() {
   const page = document.getElementById('page-read');
   if (!container || !page) return;
   
-  // 滑动翻页
+  // 滑动翻页（手机）
   container.addEventListener('touchstart', handleReadTouchStart, { passive: true });
   container.addEventListener('touchend', handleReadTouchEnd, { passive: true });
+
+  // 电脑端：鼠标按住横向拖拽也能翻页
+  var _rdDownX = null, _rdDownT = 0;
+  container.addEventListener('mousedown', function (e) {
+    if (e.button !== 0) return;
+    _rdDownX = e.clientX; _rdDownT = Date.now();
+  });
+  container.addEventListener('mouseup', function (e) {
+    if (_rdDownX === null) return;
+    var dx = e.clientX - _rdDownX, dt = Date.now() - _rdDownT;
+    _rdDownX = null;
+    if (Math.abs(dx) > 60 && dt < 900) {
+      var sel = window.getSelection();
+      if (sel && sel.toString().trim().length > 0) return;
+      doReadFlip(dx < 0 ? 1 : -1);
+    }
+  });
+  container.addEventListener('mouseleave', function () { _rdDownX = null; });
   
   // 绑定初始 slide 点击
   bindInitialSlideClick();
